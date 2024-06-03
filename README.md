@@ -1,4 +1,4 @@
-# Wanderlust Adventures
+# WanderPlan
 
 ## Overview
 
