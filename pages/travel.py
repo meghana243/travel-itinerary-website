@@ -1,16 +1,33 @@
 import streamlit as st
 from datetime import date, timedelta
-
-st.set_page_config(page_title="Travel Itinerary", page_icon="🗺️")
 import folium
 from streamlit_folium import folium_static
+
+st.set_page_config(page_title="Travel Itinerary", page_icon="🗺️")
 
 # Sample points of interest data
 poi_data = {
     "India": [
         {"name": "Taj Mahal", "location": [27.1751, 78.0421]},
         {"name": "Rajasthan", "location": [27.0238, 74.2179]},
-        {"name": "Rishikesh", "location": [30.0869, 78.2676]}
+        {"name": "Rishikesh", "location": [30.0869, 78.2676]},
+        {"name": "Red Fort", "location": [28.6562, 77.2410]},
+        {"name": "Qutub Minar", "location": [28.5245, 77.1855]},
+        {"name": "Gateway of India", "location": [18.9220, 72.8347]},
+        {"name": "Kerala Backwaters", "location": [9.6030, 76.1664]},
+        {"name": "Hawa Mahal", "location": [26.9239, 75.8267]},
+        {"name": "Goa Beaches", "location": [15.2993, 74.1240]},
+        {"name": "Mysore Palace", "location": [12.3052, 76.6551]},
+        {"name": "Ajanta and Ellora Caves", "location": [20.5537, 75.7033]},
+        {"name": "Varanasi Ghats", "location": [25.2820, 83.0061]},
+        {"name": "Hampi", "location": [15.3350, 76.4600]},
+        {"name": "Leh Ladakh", "location": [34.1526, 77.5770]},
+        {"name": "Amritsar Golden Temple", "location": [31.6200, 74.8765]},
+        {"name": "Sundarbans", "location": [21.9497, 89.1833]},
+        {"name": "Kaziranga National Park", "location": [26.5775, 93.1714]},
+        {"name": "Ranthambore National Park", "location": [26.0173, 76.5026]},
+        {"name": "Meenakshi Temple", "location": [9.9194, 78.1194]},
+        {"name": "Sikkim", "location": [27.5330, 88.5122]}
     ],
     "New York": [
         {"name": "Statue of Liberty", "location": [40.6892, -74.0445]},
@@ -22,7 +39,7 @@ poi_data = {
         {"name": "Louvre Museum", "location": [48.8606, 2.3376]},
         {"name": "Seine River", "location": [48.8566, 2.3522]}
     ],
-      "Tokyo": [
+    "Tokyo": [
         {"name": "Senso-ji Temple", "location": [35.7148, 139.7967]},
         {"name": "Akihabara", "location": [35.7023, 139.7745]},
         {"name": "Mount Fuji", "location": [35.3606, 138.7274]},
@@ -78,41 +95,43 @@ poi_data = {
         {"name": "London Eye", "location": [51.5033, -0.1196]},
         {"name": "Big Ben", "location": [51.5007, -0.1246]}
     ]
-
 }
 
-def create_map(destination):
-    # Initialize a folium map centered on the destination's first POI
+def create_map(destination, selected_poi=None):
     if destination not in poi_data:
         st.error(f"No data available for {destination}")
-        return None
+        return None, []
 
     first_poi = poi_data[destination][0]["location"]
     travel_map = folium.Map(location=first_poi, zoom_start=12)
 
-    # Add POIs to the map
     for poi in poi_data[destination]:
         folium.Marker(
             location=poi["location"],
             popup=poi["name"],
-            tooltip=poi["name"]
+            tooltip=poi["name"],
+            icon=folium.Icon(color="blue" if poi["name"] != selected_poi else "red")
         ).add_to(travel_map)
 
-    return travel_map
+    if selected_poi:
+        for poi in poi_data[destination]:
+            if poi["name"] == selected_poi:
+                folium.Marker(
+                    location=poi["location"],
+                    popup=poi["name"],
+                    tooltip=poi["name"],
+                    icon=folium.Icon(color="red")
+                ).add_to(travel_map)
+                travel_map.location = poi["location"]
+
+    return travel_map, [poi["name"] for poi in poi_data[destination]]
 
 def main():
-    
-    
     st.video('travelling.mp4')
-    
-    #st.image('landscape1.jpg', caption='To travel is to live')
     st.title("WanderPlan")
-    
+
     st.sidebar.title("Input Trip Details")
     destinations = list(poi_data.keys())
-    
-    # List of popular destinations
-    destinations = ["India","New York", "Paris", "Tokyo", "Sydney", "Cape Town", "Rio de Janeiro", "Istanbul", "Rome", "Bangkok", "London"]
 
     with st.sidebar.form("itinerary_form"):
         st.image('logo1.png')
@@ -121,23 +140,39 @@ def main():
         end_date = st.date_input("End Date", date.today())
         destination = st.selectbox("Destination", destinations)
         submit = st.form_submit_button("Save Itinerary")
-    
+        
     if submit:
-        st.subheader(f"Trip: {trip_name}")
-        st.write(f"Destination: {destination}")
-        st.write(f"Start Date: {start_date}")
-        st.write(f"End Date: {end_date}")
-        st.subheader("Map with Points of Interest")
-        travel_map = create_map(destination)
-        if travel_map:
-            folium_static(travel_map)
-        days = (end_date - start_date).days + 1
+        st.session_state.trip_name = trip_name
+        st.session_state.start_date = start_date
+        st.session_state.end_date = end_date
+        st.session_state.destination = destination
+        st.session_state.selected_poi = None
+
+    if "trip_name" in st.session_state:
+        st.subheader(f"Trip: {st.session_state.trip_name}")
+        st.write(f"Destination: {st.session_state.destination}")
+        st.write(f"Start Date: {st.session_state.start_date}")
+        st.write(f"End Date: {st.session_state.end_date}")
+        
+
+
+        poi_names = [poi["name"] for poi in poi_data[st.session_state.destination]]
+        selected_poi = st.sidebar.selectbox("Select Point of Interest", poi_names)
+
+        if st.session_state.selected_poi != selected_poi:
+            st.session_state.selected_poi = selected_poi
+
+        travel_map, _ = create_map(st.session_state.destination, st.session_state.selected_poi)
+        folium_static(travel_map)
+        
+        days = (st.session_state.end_date - st.session_state.start_date).days + 1
         itinerary = {}
         for i in range(days):
-            day = start_date + timedelta(days=i)
+            day = st.session_state.start_date + timedelta(days=i)
             with st.expander(f"Day {i + 1} ({day.strftime('%Y-%m-%d')})"):
                 activities = st.text_area(f"Activities for Day {i + 1}", key=f"day_{i}")
                 itinerary[day.strftime('%Y-%m-%d')] = activities
+
         uploaded_file = st.file_uploader("We keep this love in a photograph🎶", type=['png', 'jpeg', 'jpg'])
         st.write("Upload your files")
         if uploaded_file is not None:
@@ -147,6 +182,8 @@ def main():
             st.write("Itinerary Saved!")
             for day, activities in itinerary.items():
                 st.write(f"**{day}**: {activities}")
+
+    
 
 if __name__ == "__main__":
     main()
